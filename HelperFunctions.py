@@ -4,6 +4,7 @@ from math import *
 import Colors
 import random
 import MarkerHandler
+from enum import Enum
 
 def create_test_image(angle=None):
     if angle is None:
@@ -65,7 +66,7 @@ def get_base_triangle(m_triangle, img_Base):
 
     triangle_center = Edge(base.get_middle(), dist_point).get_middle()
     cv2.putText(img_Base, str(int(angle)), tuple(triangle_center), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
-    return img_Base
+    return img_Base, tuple(triangle_center), int(angle)
 
 
 class Edge:
@@ -124,10 +125,11 @@ def prep_image(input_img, canny_thresh_min, canny_thresh_max):
     # # merge the channels
     # image_channels = np.concatenate((image_channels[0], image_channels[1], image_channels[2]), axis=2)
     # # save the denoised image
-    result, unwarped = MarkerHandler.Unwarp(input_img)
-    if result is False:
-        unwarped = input_img
-    show_window(unwarped)
+    # result, unwarped = MarkerHandler.Unwarp(input_img)
+    # if result is False:
+    #     unwarped = input_img
+    # show_window(unwarped)
+    unwarped = input_img
     img = cv2.cvtColor(unwarped, cv2.COLOR_BGR2GRAY)
     _, threshold = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY_INV)
     edged = cv2.Canny(threshold, canny_thresh_min, canny_thresh_max)
@@ -136,3 +138,24 @@ def prep_image(input_img, canny_thresh_min, canny_thresh_max):
     kernel = np.ones((5, 5), np.uint8)
     erosion = cv2.erode(dilate, kernel, iterations=1)
     return erosion
+
+
+class Shape(Enum):
+    large_tri = 1
+    med_tri = 2
+    small_tri = 3
+    rect = 4
+    diamond = 5
+    empty = 6
+
+
+class Piece:
+    location = (0,0)
+    rotation = 0
+    shape = Shape.empty
+
+    def __init__(self, loc, rot, shp):
+        self.location = loc
+        self.rotation = rot
+        self.shape = shp
+
