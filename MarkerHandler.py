@@ -41,9 +41,9 @@ def unwarp(frame):
     return True, cv2.warpPerspective(frame, M, (w, h), flags=cv2.INTER_LINEAR)
 
 
-img = cv2.imread("Marker_test.jpg", cv2.IMREAD_COLOR)
-result, unwarped = unwarp(img)
-cv2.imshow('plaatje', unwarped)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-cv2.imwrite('warped_img.jpg', unwarped)
+# img = cv2.imread("Marker_test.jpg", cv2.IMREAD_COLOR)
+# result, unwarped = unwarp(img)
+# cv2.imshow('plaatje', unwarped)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+# cv2.imwrite('warped_img.jpg', unwarped)

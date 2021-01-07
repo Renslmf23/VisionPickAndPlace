@@ -4,6 +4,9 @@ from math import *
 import Colors
 import random
 from HelperFunctions import *
+import snap7.client as c
+from snap7.util import *
+from snap7.snap7types import *
 
 # constants
 
@@ -34,7 +37,10 @@ contours_rect, _ = cv2.findContours(edged_rect.copy(), cv2.RETR_EXTERNAL, cv2.CH
 contours_tri, _ = cv2.findContours(edged_tri.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 contours_diam, _ = cv2.findContours(edged_diam.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-# Find Canny edges
+
+# -------------------MEMORY LOCATIONS----------------------#
+begin_stukjes = 54
+stukjes_offset = 28
 
 
 
@@ -95,10 +101,38 @@ def find_contours(angle=None):
     show_window(img_Base, True)
     for piece in pieces:
         print(str(piece.location) + ", " + piece.shape.name)
+    pieces.sort(key=sort_by_enum)
+    for i in range(len(pieces)):
+        WriteMemory(begin_stukjes + stukjes_offset * i, pieces[i].location[0], S7WLReal)
+        WriteMemory(begin_stukjes + 4 + stukjes_offset * i, pieces[i].location[1], S7WLReal)
+        WriteMemory(begin_stukjes + 12 + stukjes_offset * i, pieces[i].rotation, S7WLWord)
 
-#for x in range(8):
-find_contours()
-cv2.destroyAllWindows()
+
+def sort_by_enum(e):
+    return e.shape
+
+
+def WriteMemory(byte, datatype, value):
+    result = plc.read_area(areas['DB'], 1, byte, datatype)
+
+    if datatype == S7WLByte or datatype == S7WLWord:
+        set_int(result, 0, value)
+    elif datatype == S7WLReal:
+        set_real(result, 0, value)
+    elif datatype == S7WLDWord:
+        set_dword(result, 0, value)
+    elif datatype == S7WLWord:
+        set_int(result, 0, value)
+    plc.write_area(areas['MK'], 0, byte, result)
+
+
+if __name__ == "__main__":
+
+    plc = c.Client()
+    plc.connect('192.168.0.1', 0, 1)
+
+    find_contours()
+    cv2.destroyAllWindows()
 
 
 #wit, groen, blauw, paars, geel, rood, oranje
