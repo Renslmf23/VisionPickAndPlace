@@ -19,6 +19,10 @@ canny_thresh_max = 200
 
 threshold_small, threshold_med = 10000, 18000
 
+
+# Variables
+send_to_plc = False
+
 # ---------------------LOAD IMAGES------------------------#
 _, img_rectangle = cv2.threshold(cv2.imread("vierkant.png", cv2.IMREAD_GRAYSCALE), 200, 255,
                                  cv2.THRESH_BINARY_INV)  # read and threshold the rectangle image
@@ -43,6 +47,10 @@ begin_stukjes = 54
 stukjes_offset = 28
 
 
+#Color thresholds
+
+
+
 
 def find_contours(angle=None):
     '''Find the location and orientation of the pieces'''
@@ -50,7 +58,7 @@ def find_contours(angle=None):
     # img = create_test_image(angle)
     img_Base = img.copy()
 
-    prepped = prep_image(img, canny_thresh_min, canny_thresh_max)
+    prepped = prep_image(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), canny_thresh_min, canny_thresh_max)
     # Finding Contours
     contours, hierarchy = cv2.findContours(prepped,
                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -102,14 +110,15 @@ def find_contours(angle=None):
     for piece in pieces:
         print(str(piece.location) + ", " + piece.shape.name)
     pieces.sort(key=sort_by_enum)
-    for i in range(len(pieces)):
-        WriteMemory(begin_stukjes + stukjes_offset * i, pieces[i].location[0], S7WLReal)
-        WriteMemory(begin_stukjes + 4 + stukjes_offset * i, pieces[i].location[1], S7WLReal)
-        WriteMemory(begin_stukjes + 12 + stukjes_offset * i, pieces[i].rotation, S7WLWord)
+    if send_to_plc:
+        for i in range(len(pieces)):
+            WriteMemory(begin_stukjes + stukjes_offset * i, pieces[i].location[0], S7WLReal)
+            WriteMemory(begin_stukjes + 4 + stukjes_offset * i, pieces[i].location[1], S7WLReal)
+            WriteMemory(begin_stukjes + 12 + stukjes_offset * i, pieces[i].rotation, S7WLWord)
 
 
 def sort_by_enum(e):
-    return e.shape
+    return int(e.shape.value)
 
 
 def WriteMemory(byte, datatype, value):
@@ -129,7 +138,7 @@ def WriteMemory(byte, datatype, value):
 if __name__ == "__main__":
 
     plc = c.Client()
-    plc.connect('192.168.0.1', 0, 1)
+    #plc.connect('192.168.0.1', 0, 1)
 
     find_contours()
     cv2.destroyAllWindows()
