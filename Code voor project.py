@@ -86,7 +86,7 @@ def find_contours(angle=None):
             angle = -rectangle[2]
             if rectangle[1][0] < rectangle[1][1]:
                 angle += 90
-            cv2.drawContours(img_Base, [box], -1, (255, 0, 0), 2)
+            #cv2.drawContours(img_Base, [box], -1, (255, 0, 0), 2)
             cv2.putText(img_Base, str(int(angle)), tuple([int(rectangle[0][0]), int(rectangle[0][1])]),
                         cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
             cv2.drawContours(img_Base, contour, -1, (0, 255, 0), 2)
