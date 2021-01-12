@@ -158,6 +158,6 @@ blue_range = ColorRange(80, 126, 60, 255, 230, 255)
 green_range = ColorRange(45, 80, 60, 255, 150, 255)
 purple_range = ColorRange(120, 160, 60, 255, 150, 255)
 
-color_ranges = [yellow_range, red_range, orange_range, blue_range, green_range, purple_range ]
+color_ranges = [yellow_range, red_range, orange_range, blue_range, green_range, purple_range]
 
 print(color_ranges[0].min_vals)
