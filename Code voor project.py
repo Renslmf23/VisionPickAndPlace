@@ -17,7 +17,7 @@ min_match_diamond = 0.2
 canny_thresh_min = 50
 canny_thresh_max = 200
 
-threshold_small, threshold_med = 10000, 18000
+threshold_small, threshold_med = 8000, 13000
 
 
 # Variables
@@ -52,13 +52,19 @@ stukjes_offset = 28
 
 
 
-def find_contours(angle=None):
+def find_contours(img, angle=None):
     '''Find the location and orientation of the pieces'''
-    img = cv2.imread("renderrr.png", cv2.IMREAD_COLOR)
+    #img = cv2.imread("renderrr.png", cv2.IMREAD_COLOR)
     # img = create_test_image(angle)
     img_Base = img.copy()
+    res, unwarped_img = MarkerHandler.unwarp(img)
+    if not res:
+        print("unwarp failed, using regular image...")
+        unwarped_img = img
+    else:
+        img_Base = unwarped_img
 
-    prepped = prep_image(cv2.cvtColor(img, cv2.COLOR_BGR2HSV), canny_thresh_min, canny_thresh_max)
+    prepped = prep_image(unwarped_img, canny_thresh_min, canny_thresh_max)
     # Finding Contours
     contours, hierarchy = cv2.findContours(prepped,
                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -73,6 +79,8 @@ def find_contours(angle=None):
             rectangle = cv2.minAreaRect(contour)
             box = cv2.boxPoints(rectangle)
             box = np.int0(box)
+            angle = -rectangle[2]
+
             cv2.putText(img_Base, str(int(rectangle[2])), tuple([int(rectangle[0][0]), int(rectangle[0][1])]), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 0, 0), 2)
             cv2.drawContours(img_Base, [box], -1, (255, 0, 0), 2)
             pieces.append(Piece(tuple([int(rectangle[0][0]), int(rectangle[0][1])]), int(angle), Shape.rect)) # add piece to database
@@ -132,15 +140,29 @@ def WriteMemory(byte, datatype, value):
         set_dword(result, 0, value)
     elif datatype == S7WLWord:
         set_int(result, 0, value)
-    plc.write_area(areas['MK'], 0, byte, result)
+    plc.write_area(areas['DB'], 1, byte, result)
 
 
 if __name__ == "__main__":
 
     plc = c.Client()
     #plc.connect('192.168.0.1', 0, 1)
-
-    find_contours()
+    cap = cv2.VideoCapture(2)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) #1280 * 720
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    index = 0
+    while(True):
+        ret, frame = cap.read()
+        if ret == True:
+            cv2.imshow("video", frame)
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            if key == ord('e'):
+                cv2.imwrite("capture" + str(index) + ".jpg", frame)
+                index+=1
+                find_contours(frame)
+    cap.release()
     cv2.destroyAllWindows()
 
 

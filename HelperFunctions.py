@@ -130,34 +130,40 @@ def get_base_triangle(m_triangle, img_Base):
 
 
 def prep_image(input_img, canny_thresh_min, canny_thresh_max):
+    #
+    # _, threshold = cv2.threshold(input_img, 210, 255, cv2.THRESH_BINARY_INV)
+    # edged = cv2.Canny(threshold, canny_thresh_min, canny_thresh_max)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    # dilate = cv2.dilate(edged, kernel)
+    # kernel = np.ones((5, 5), np.uint8)
+    # erosion = cv2.erode(dilate, kernel, iterations=1)
+    # show_window(erosion)
+    # return erosion
+    #
+    input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
     '''Preps an image by denoising and fixing warp/perspective'''
-    out_img = np.zeros((input_img.shape[0], input_img.shape[1]))
+    out_img = np.zeros((input_img.shape[0], input_img.shape[1]), np.uint8)
     for color_range in color_ranges:
-        print(color_range.min_vals)
         in_img = get_thresholded_color(input_img, color_range)
         edged = cv2.Canny(in_img, canny_thresh_min, canny_thresh_max)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
         dilate = cv2.dilate(edged, kernel)
         kernel = np.ones((5, 5), np.uint8)
         erosion = cv2.erode(dilate, kernel, iterations=1)
-        for x in range(input_img.shape[0]):
-            for y in range(input_img.shape[1]):
-                if erosion[x, y] > 100:
-                    out_img[x, y] = 255
-    show_window(out_img.astype(np.uint8))
+        out_img = cv2.add(out_img, erosion)
+        show_window(out_img.astype(np.uint8))
     return out_img.astype(np.uint8)
 
 
 def get_thresholded_color(input_img, color_range):
     return cv2.inRange(input_img, tuple(color_range.min_vals), tuple(color_range.max_vals))
 
-yellow_range = ColorRange(22, 36, 60, 255, 230, 255)
-red_range = ColorRange(0, 8, 60, 255, 230, 255)
-orange_range = ColorRange(8, 16, 60, 255, 230, 255)
-blue_range = ColorRange(80, 126, 60, 255, 230, 255)
-green_range = ColorRange(45, 80, 60, 255, 150, 255)
-purple_range = ColorRange(120, 160, 60, 255, 150, 255)
+yellow_range = ColorRange(22, 36, 60, 255, 200, 255)
+red_range = ColorRange(0, 8, 60, 255, 200, 255)
+orange_range = ColorRange(8, 16, 60, 255, 200, 255)
+blue_range = ColorRange(80, 126, 60, 255, 200, 255)
+green_range = ColorRange(45, 80, 10, 255, 200, 255) #45, 80, 60, 255, 150, 255
+purple_range = ColorRange(120, 160, 60, 255, 200, 255)
 
 color_ranges = [yellow_range, red_range, orange_range, blue_range, green_range, purple_range]
 
-print(color_ranges[0].min_vals)

@@ -6,6 +6,9 @@ import matplotlib as mpl
 import pandas as pd
 
 
+aspect_ratio_field = 21/30
+
+
 def get_perspective_points(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
@@ -14,7 +17,7 @@ def get_perspective_points(frame):
     frame_markers = aruco.drawDetectedMarkers(frame.copy(), corners, ids)
     plt.figure()
     plt.imshow(frame_markers)
-    if len(ids) < 4:
+    if ids is None or len(ids) < 4:
         return False, None
     result = [0, 0, 0, 0]
     for i in range(4):
@@ -38,9 +41,13 @@ def unwarp(frame):
     # use cv2.getPerspectiveTransform() to get M, the transform matrix, and Minv, the inverse
     M = cv2.getPerspectiveTransform(src, dst)
     # use cv2.warpPerspective() to warp your image to a top-down view
-    return True, cv2.warpPerspective(frame, M, (w, h), flags=cv2.INTER_LINEAR)
+    warped_frame = cv2.warpPerspective(frame, M, (w, h), flags=cv2.INTER_LINEAR)
+    dimensions = [w, int(h * aspect_ratio_field)]
+    if w > h:
+        dimensions = [int(w * aspect_ratio_field), h]
+    return True, cv2.resize(warped_frame, tuple(dimensions), interpolation=cv2.INTER_AREA)
 
-
+#
 # img = cv2.imread("Marker_test.jpg", cv2.IMREAD_COLOR)
 # result, unwarped = unwarp(img)
 # cv2.imshow('plaatje', unwarped)
