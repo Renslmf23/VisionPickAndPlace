@@ -21,7 +21,7 @@ threshold_small, threshold_med = 8000, 13000
 
 
 # Variables
-send_to_plc = False
+send_to_plc = True
 
 # ---------------------LOAD IMAGES------------------------#
 _, img_rectangle = cv2.threshold(cv2.imread("vierkant.png", cv2.IMREAD_GRAYSCALE), 200, 255,
@@ -54,7 +54,7 @@ stukjes_offset = 28
 
 def find_contours(img, angle=None):
     '''Find the location and orientation of the pieces'''
-    #img = cv2.imread("renderrr.png", cv2.IMREAD_COLOR)
+    #img = cv2.imread("capture0.jpg", cv2.IMREAD_COLOR)
     # img = create_test_image(angle)
     img_Base = img.copy()
     res, unwarped_img = MarkerHandler.unwarp(img)
@@ -114,7 +114,7 @@ def find_contours(img, angle=None):
             img_Base, loc, rot = get_base_triangle(triangle, img_Base) # get the triangle data
             pieces.append(Piece(loc, rot, shape)) # add piece to database
 
-    show_window(img_Base, True)
+    show_window(img_Base)
     for piece in pieces:
         print(str(piece.location) + ", " + piece.shape.name)
     pieces.sort(key=sort_by_enum)
@@ -146,8 +146,8 @@ def WriteMemory(byte, datatype, value):
 if __name__ == "__main__":
 
     plc = c.Client()
-    #plc.connect('192.168.0.1', 0, 1)
-    cap = cv2.VideoCapture(2)
+    plc.connect('192.168.0.1', 0, 1)
+    cap = cv2.VideoCapture(3)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) #1280 * 720
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     index = 0
