@@ -16,6 +16,12 @@ class Shape(Enum):
     empty = 6
 
 
+class PrepMethod(Enum):
+    colors = 1
+    threshold_grayscale = 2
+    threshold_background = 3
+    blur_edge_detect = 4
+
 class Piece:
 
     def __init__(self, loc, rot, shp):
@@ -88,6 +94,18 @@ plaatje_index = 0
 def show_window(image, noDestroy=False):
     '''Custom function to display image'''
     global plaatje_index
+    h, w = image.shape[:2]
+    scale_percent = 1
+    if h > 1000:
+        scale_percent = 1000/h  # percent of original size
+    if w > 1900:
+        scale_percent = 1900 / h  # percent of original size
+    width = int(w * scale_percent)
+    height = int(h * scale_percent)
+    dim = (width, height)
+
+    # resize image
+    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     cv2.imshow('plaatje' + str(plaatje_index), image)
     plaatje_index += 1
     cv2.waitKey(0)
@@ -129,31 +147,71 @@ def get_base_triangle(m_triangle, img_Base):
     return img_Base, tuple(triangle_center), int(angle)
 
 
-def prep_image(input_img, canny_thresh_min, canny_thresh_max):
-    input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
-    _, threshold = cv2.threshold(input_img, 150, 255, cv2.THRESH_BINARY_INV)
-    show_window(threshold)
-    edged = cv2.Canny(threshold, canny_thresh_min, canny_thresh_max)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-    dilate = cv2.dilate(edged, kernel)
-    kernel = np.ones((5, 5), np.uint8)
-    erosion = cv2.erode(dilate, kernel, iterations=1)
-    #show_window(erosion)
-    return erosion
-    #
-    # input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
-    # '''Preps an image by denoising and fixing warp/perspective'''
-    # out_img = np.zeros((input_img.shape[0], input_img.shape[1]), np.uint8)
-    # for color_range in color_ranges:
-    #     in_img = get_thresholded_color(input_img, color_range)
-    #     edged = cv2.Canny(in_img, canny_thresh_min, canny_thresh_max)
-    #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-    #     dilate = cv2.dilate(edged, kernel)
-    #     kernel = np.ones((5, 5), np.uint8)
-    #     erosion = cv2.erode(dilate, kernel, iterations=1)
-    #     out_img = cv2.add(out_img, erosion)
-    #     show_window(out_img.astype(np.uint8))
-    # return out_img.astype(np.uint8)
+def prep_image(input_img, canny_thresh_min, canny_thresh_max, prep_method, threshold_min = 150, threshold_max = 255):
+    if prep_method == PrepMethod.colors:
+        input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
+        '''Preps an image by denoising and fixing warp/perspective'''
+        out_img = np.zeros((input_img.shape[0], input_img.shape[1]), np.uint8)
+        for color_range in color_ranges:
+            in_img = get_thresholded_color(input_img, color_range)
+            edged = cv2.Canny(in_img, canny_thresh_min, canny_thresh_max)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+            dilate = cv2.dilate(edged, kernel)
+            kernel = np.ones((5, 5), np.uint8)
+            erosion = cv2.erode(dilate, kernel, iterations=1)
+            out_img = cv2.add(out_img, erosion)
+            show_window(out_img.astype(np.uint8))
+        return out_img.astype(np.uint8)
+    elif prep_method == PrepMethod.threshold_grayscale:
+        input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
+        _, threshold = cv2.threshold(input_img, threshold_min, threshold_max, cv2.THRESH_BINARY_INV)
+        edged = cv2.Canny(threshold, canny_thresh_min, canny_thresh_max)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        dilate = cv2.dilate(edged, kernel)
+        kernel = np.ones((5, 5), np.uint8)
+        erosion = cv2.erode(dilate, kernel, iterations=1)
+        return erosion
+    elif prep_method == PrepMethod.threshold_background:
+        input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2HSV)
+        threshold = ~get_thresholded_color(input_img, background_range)
+        edged = cv2.Canny(threshold, canny_thresh_min, canny_thresh_max)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        dilate = cv2.dilate(edged, kernel)
+        kernel = np.ones((5, 5), np.uint8)
+        erosion = cv2.erode(dilate, kernel, iterations=1)
+        return erosion
+    elif prep_method == PrepMethod.blur_edge_detect:
+        morph = cv2.medianBlur(input_img,9)
+        morph = cv2.GaussianBlur(morph, (5,5), 0)
+        show_window(morph)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
+        morph = cv2.morphologyEx(morph, cv2.MORPH_CLOSE, kernel)
+        morph = cv2.morphologyEx(morph, cv2.MORPH_OPEN, kernel)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+
+        # take morphological gradient
+        gradient_image = cv2.morphologyEx(morph, cv2.MORPH_GRADIENT, kernel)
+        # split the gradient image into channels
+        image_channels = np.split(np.asarray(gradient_image), 3, axis=2)
+
+        channel_height, channel_width, _ = image_channels[0].shape
+
+        # apply Otsu threshold to each channel
+        for i in range(0, 3):
+            _, image_channels[i] = cv2.threshold(~image_channels[i], 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY)
+            image_channels[i] = np.reshape(image_channels[i], newshape=(channel_height, channel_width, 1))
+        # merge the channels
+        image_channels = np.concatenate((image_channels[0], image_channels[1], image_channels[2]), axis=2)
+        img = cv2.cvtColor(image_channels, cv2.COLOR_BGR2GRAY)
+        _, threshold = cv2.threshold(img, 230, 255, cv2.THRESH_BINARY_INV)
+        show_window(threshold)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+        dilate = cv2.dilate(threshold, kernel)
+        kernel = np.ones((5, 5), np.uint8)
+        erosion = cv2.erode(dilate, kernel, iterations=1)
+        return erosion
+
 
 
 def get_thresholded_color(input_img, color_range):
@@ -165,6 +223,8 @@ orange_range = ColorRange(8, 16, 60, 255, 200, 255)
 blue_range = ColorRange(80, 126, 60, 255, 200, 255)
 green_range = ColorRange(45, 80, 60, 255, 200, 255) #45, 80, 60, 255, 150, 255
 purple_range = ColorRange(120, 160, 60, 255, 200, 255)
+
+background_range = ColorRange(0, 179, 0, 10, 200, 255)
 
 color_ranges = [yellow_range, red_range, orange_range, blue_range, green_range, purple_range]
 

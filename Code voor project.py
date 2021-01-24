@@ -14,14 +14,21 @@ min_contour_area = 1000
 min_match_triangle = 0.15
 min_match_rectangle = 0.15
 min_match_diamond = 0.2
-canny_thresh_min = 50
-canny_thresh_max = 200
+canny_thresh_min = 50 #50
+canny_thresh_max = 200 #200
 
 threshold_small, threshold_med = 8000, 13000
+
+# Workspace mapping
+pos_x_offset = 10
+pos_y_offset = 10
+pos_x_scale = 100
+pos_y_scale = 100
 
 
 # Variables
 send_to_plc = True
+use_color_thresholding = False
 
 # ---------------------LOAD IMAGES------------------------#
 _, img_rectangle = cv2.threshold(cv2.imread("reference/vierkant.png", cv2.IMREAD_GRAYSCALE), 200, 255,
@@ -47,12 +54,7 @@ begin_stukjes = 54
 stukjes_offset = 28
 
 
-#Color thresholds
-
-
-
-
-def find_contours(img, angle=None):
+def find_contours(img, prep_method,angle=None):
     '''Find the location and orientation of the pieces'''
     #img = cv2.imread("capture0.jpg", cv2.IMREAD_COLOR)
     # img = create_test_image(angle)
@@ -64,7 +66,7 @@ def find_contours(img, angle=None):
     else:
         img_Base = unwarped_img
 
-    prepped = prep_image(unwarped_img, canny_thresh_min, canny_thresh_max)
+    prepped = prep_image(unwarped_img, canny_thresh_min, canny_thresh_max, prep_method)
     # Finding Contours
     contours, hierarchy = cv2.findContours(prepped,
                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -120,9 +122,9 @@ def find_contours(img, angle=None):
     pieces.sort(key=sort_by_enum)
     if send_to_plc:
         for i in range(len(pieces)):
-            WriteMemory(begin_stukjes + stukjes_offset * i, pieces[i].location[0], S7WLReal)
-            WriteMemory(begin_stukjes + 4 + stukjes_offset * i, pieces[i].location[1], S7WLReal)
-            WriteMemory(begin_stukjes + 12 + stukjes_offset * i, pieces[i].rotation, S7WLWord)
+            WriteMemory(begin_stukjes + stukjes_offset * i, pieces[i].location[0] * pos_x_scale + pos_x_offset, S7WLReal) # X coord of pieces
+            WriteMemory(begin_stukjes + 4 + stukjes_offset * i, pieces[i].location[1] * pos_y_scale + pos_y_offset, S7WLReal) # Y coord of pieces
+            WriteMemory(begin_stukjes + 12 + stukjes_offset * i, pieces[i].rotation, S7WLWord) # rotation of pieces
 
 
 def sort_by_enum(e):
@@ -144,25 +146,25 @@ def WriteMemory(byte, datatype, value):
 
 
 if __name__ == "__main__":
-
+    find_contours(cv2.imread("Test_blokjes.png", cv2.IMREAD_COLOR), PrepMethod.blur_edge_detect)
     plc = c.Client()
-    #plc.connect('192.168.0.1', 0, 1)
-    cap = cv2.VideoCapture(3)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) #1280 * 720
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    index = 0
-    while(True):
-        ret, frame = cap.read()
-        if ret == True:
-            cv2.imshow("video", frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            if key == ord('e'):
-                cv2.imwrite("capture" + str(index) + ".jpg", frame)
-                index+=1
-                find_contours(frame)
-    cap.release()
+    # plc.connect('192.168.0.1', 0, 1)
+    # cap = cv2.VideoCapture(3)
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) #1280 * 720
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    # index = 0
+    # while(True):
+    #     ret, frame = cap.read()
+    #     if ret == True:
+    #         cv2.imshow("video", frame)
+    #         key = cv2.waitKey(1) & 0xFF
+    #         if key == ord('q'):
+    #             break
+    #         if key == ord('e'):
+    #             cv2.imwrite("capture" + str(index) + ".jpg", frame)
+    #             index+=1
+    #             find_contours(frame)
+    # cap.release()
     cv2.destroyAllWindows()
 
 
